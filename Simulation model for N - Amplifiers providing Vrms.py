@@ -7,39 +7,81 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
-from scipy import constants
+from scipy.constants import *
 
 
-# In[ ]:
+# In[3]:
+
+
+class Amplifier:
+    
+    def __init__(self, gain, vrms):
+        self.gain = gain
+        self.vrms = vrms
+
+
+class Resistor:
+    
+    def __init__(self, vrms):
+        self.vrms = vrms
+        
+class Otherinputs:
+    def __init__(self, resistance, bandwidth, frequency):
+        self.resistance = resistance
+        self.bandwidth = bandwidth
+        self.frequency = frequency
+        
+amplifiers = [
+    Amplifier(5,1.1745930046241017e-05),
+    Amplifier(10,1.017186676745961e-05),
+    Amplifier(15,9.097630153982875e-06),
+    Amplifier(20,8.304629751072748e-06)
+]
+        
+resistor = [
+    Resistor(2.3493270156603197e-05)
+]    
+
+otherinputs = [
+    Otherinputs(50, 5e9, 1e9),
+]
+
+
+# In[10]:
 
 
 #providing the inputs
 def inputs():
-    number_res = int(input("Enter the number of the resistor in the circuit: "))    #At the moment the model is designed for only 1 resistors, not for intermidate resistors
+    number_res = 1    #At the moment the model is designed for only 1 resistors, not for intermidate resistors
     number_amp = int(input("Enter the number of the amplifiers in the circuit: "))
     
     
     vrmsofresistor = []
-    for i in range(number_res):
-        print("Enter the Voltage(rms) of resistor:",i+1)
-        vrmsofresistor.append(float(input(":")))
+                              
+    b = []                    #random variables only used for constructing the loop
+    for i in range(number_res):  
+        b.append(resistor[i].vrms)
+        vrmsofresistor.append(b)
+        
         
         
     vrmsofamplifiers = []
-    gofamplifiers = []
+    gainofamplifiers = []
+    
+                
+    b = []       #random variables only used for constructing the loop
     for i in range(number_amp):
-        print("Enter the Voltage(RMS) of the amplifier",i)
-        vrmsofamplifiers.append(float(input(":")))
-        print("Enter the Gain of the amplifier",i)
-        gofamplifiers.append(float(input(":")))
+        b.append(amplifiers[i].vrms)
+        vrmsofamplifiers.append(b)
+        gainofamplifiers.append(amplifiers[i].gain)
     
-    resistance = float(input("Enter the value of resistance: "))
-    bandwidth = float(input("Enter the value of bandwidth: "))
-    frequency = float(input("Enter the value of frequency: "))
+    resistance = otherinputs[0].resistance
+    bandwidth = otherinputs[0].bandwidth
+    frequency = otherinputs[0].frequency
     
-    return(vrmsofresistor, vrmsofamplifiers, gofamplifiers, resistance, bandwidth, frequency)
+    return(vrmsofresistor, vrmsofamplifiers, gainofamplifiers, resistance, bandwidth, frequency)
 
-vrmsofresistor, vrmsofamplifiers, gofamplifiers, resistance, bandwidth, frequency = inputs()
+vrmsofresistor, vrmsofamplifiers, gainofamplifiers, resistance, bandwidth, frequency = inputs()
 
 print('---------------------------------------------------------------')
 
@@ -50,7 +92,7 @@ def noisepower_resistors():
     #calculating noiseopower of resistors without gain
     noisepower_resistors_nogain = []
     for i in range(len(vrmsofresistor)):
-        noisepower_resistors_nogain.append(((vrmsofresistor[i])**2)/(4*resistance))
+        noisepower_resistors_nogain.append(((resistor[i].vrms)**2)/(4*resistance))
 
 
     #calculating noiseopower of resistors with gain
@@ -61,8 +103,8 @@ def noisepower_resistors():
     noisepower_resistor_withgain = []
     for i in range(len(vrmsofresistor)):
         oo = noisepower_resistors_nogain[i]
-        for j in range(0,len(gofamplifiers)):  #equation for n amplifers, e.g. n=4; total noise power contributing from the resistor =  g1*g2*g3*g4(Noisepower of resistor)
-            mm = gofamplifiers[j]*oo
+        for j in range(0,len(gainofamplifiers)):  #equation for n amplifers, e.g. n=4; total noise power contributing from the resistor =  g1*g2*g3*g4(Noisepower of resistor)
+            mm = gainofamplifiers[j]*oo
             oo = mm
         noisepower_resistor_withgain.append(oo)
     print('Noise power of the resistors:', noisepower_resistor_withgain)
@@ -81,7 +123,7 @@ def noisepower_amplifiers():
     #calculating noiseopower of amplifiers without gain
     noisepower_amplifiers_nogain = []        
     for i in range(len(vrmsofamplifiers)):
-        noisepower_amplifiers_nogain.append(((vrmsofamplifiers[i])**2)/(4*resistance))
+        noisepower_amplifiers_nogain.append(((amplifiers[i].vrms)**2)/(4*resistance))
 
     
     #calculating noiseopower of amplifiers with gain
@@ -89,9 +131,9 @@ def noisepower_amplifiers():
     o = 1                                               #random variables only used for constructing the loop
     m = 1
     for i in range(len(vrmsofamplifiers)):
-        o = (((vrmsofamplifiers[i])**2)/(4*resistance))
-        for j in range(i+1,len(gofamplifiers)):         #equation for n amplifers, e.g. n=4; total noise power contributing from the amplifer1 =  g2*g3*g4(Noisepower Amp1), total noise power contributing from the amplifer2 =  g3*g4(Noisepower Amp2), so on ....
-            m = gofamplifiers[j]*o
+        o = (((amplifiers[i].vrms)**2)/(4*resistance))
+        for j in range(i+1,len(gainofamplifiers)):         #equation for n amplifers, e.g. n=4; total noise power contributing from the amplifer1 =  g2*g3*g4(Noisepower Amp1), total noise power contributing from the amplifer2 =  g3*g4(Noisepower Amp2), so on ....
+            m = gainofamplifiers[j]*o
             o = m
         noisepower_amplifiers_withgains.append(o)
     print('Noise power of the amplifiers:', noisepower_amplifiers_withgains)
@@ -160,4 +202,10 @@ print('Total Noisepower of circuit:', total_noisepower)
 
 total_noisetemperature = totalnoisetemperature_from_resisitors + totalnoisetemperature_from_amplifiers
 print('Total Noisetemperature of circuit:', total_noisetemperature)
+
+
+# In[ ]:
+
+
+
 
