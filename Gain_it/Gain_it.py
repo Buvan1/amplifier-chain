@@ -8,14 +8,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import *
 from scipy.special import softmax
+from dataclasses import dataclass
+@dataclass
+class Amplifier:
+    gain: float
+    noisetemperature: float
 
 
 # In[2]:
 
 
-def gain_iteration(signal1mean,signal2mean, std_signal, iterations, noise_temperature_amplifiers, amplifiers_gain, frequency,bandwidth, impedance, iteration_range, h, k):
+def gain_iteration(signal1mean,signal2mean, std_signal, iterations, amplifiers, frequency,bandwidth, impedance, iteration_range, h, k):
+
     signal1 = np.random.normal(loc=signal1mean, scale= std_signal, size=iterations)
     signal2 = np.random.normal(loc=signal2mean, scale = std_signal, size=iterations)
+
+    #extracting gain and noisetemperature for amplifier class
+    amplifiers_gain = []
+    noise_temperature_amplifiers = []
+    for i in range(len(amplifiers)):
+        amplifiers_gain.append(amplifiers[i].gain)
+        noise_temperature_amplifiers.append(amplifiers[i].noisetemperature + 300)
+
+
 
     #noise_temp -> std_noise
     std_noise = []
@@ -51,13 +66,17 @@ def gain_iteration(signal1mean,signal2mean, std_signal, iterations, noise_temper
     std_signal2_at_each_stage = []
     mean_signal1_amplifier_each_stage = []
     mean_signal2_amplifier_each_stage = []
-    fig = plt.figure(figsize=(12,12))
-    fig.subplots_adjust(hspace=0.3, wspace=0.3)
+    #fig = plt.figure(figsize=(12,12))
+    #fig.subplots_adjust(hspace=0.3, wspace=0.3)
     for i in range(1,len(total_gain_each_stage)+1):
-        ax = fig.add_subplot(2, 2, i)
-        y,x,h = ax.hist(signal1_after_gain[i-1], bins=int((iterations/4)), label='signal1')
-        y1,x1,h1 = ax.hist(signal2_after_gain[i-1], bins=int((iterations/4)), label='signal2')
-        ax.legend()
+
+
+        y,x = np.histogram(signal1_after_gain[i-1], bins=int((iterations/4)))
+        y1,x1 = np.histogram(signal2_after_gain[i-1], bins=int((iterations/4)))
+        #ax = fig.add_subplot(2, 2, i)
+        #y,x,h = ax.hist(signal1_after_gain[i-1], bins=int((iterations/4)), label='signal1')
+        #y1,x1,h1 = ax.hist(signal2_after_gain[i-1], bins=int((iterations/4)), label='signal2')
+        #ax.legend()
 
         mean_signal1_amplifier_each_stage.append(np.mean(x))
         mean_signal2_amplifier_each_stage.append(np.mean(x1))
@@ -79,13 +98,9 @@ def gain_iteration(signal1mean,signal2mean, std_signal, iterations, noise_temper
             s1, s2, p1, p2 = 0, 0, 0, 0
             signal1 = np.random.normal(loc=mean_signal1_amplifier_each_stage[j], scale= std2[j], size=iteration_range[i])
 
-
-
             # log(p(v=signal1|Si))
             for k in range(len(signal1)):
                 s1 += -((signal1[k]- mean_signal1_amplifier_each_stage[j])**2)/(2*(std2[j]**2))
-
-
 
             # log(p(v=signal2|Si))
             for l in range(len(signal1)):
@@ -107,26 +122,32 @@ def gain_iteration(signal1mean,signal2mean, std_signal, iterations, noise_temper
             for k in range(len(signal2)):
                 s1 += -((signal2[k]- mean_signal1_amplifier_each_stage[j])**2)/(2*(std2[j]**2))
 
-
-
             # log(p(v=signal2|Si))
             for l in range(len(signal2)):
                 s2 += -((signal2[l] - mean_signal2_amplifier_each_stage[j])**2)/(2*(std2[j]**2))
 
-
             p1, p2 = softmax([s1, s2])
-
 
             if p2 > 0.9:
                 num_of_iterations_for_prob2_signal2.append(iteration_range[i])
                 break
-    return(total_gain_each_stage, num_of_iterations_for_prob1_signal1, num_of_iterations_for_prob2_signal2)
+    return(total_gain_each_stage, num_of_iterations_for_prob1_signal1, num_of_iterations_for_prob2_signal2, signal1_after_gain, signal2_after_gain)
 
 
 # In[3]:
 
 
-def gain_it_results(total_gain_each_stage, num_of_iterations_for_prob1_signal1, num_of_iterations_for_prob2_signal2):
+def gain_it_results(total_gain_each_stage, num_of_iterations_for_prob1_signal1, num_of_iterations_for_prob2_signal2, signal1_after_gain, signal2_after_gain):
+    fig = plt.figure(figsize=(12,12))
+    fig.subplots_adjust(hspace=0.3, wspace=0.3)
+    for i in range(1,len(total_gain_each_stage)+1):
+        ax = fig.add_subplot(2, 2, i)
+        heading = 'Gain:'+str(total_gain_each_stage[i-1])+'dB'
+        ax.hist(signal1_after_gain[i-1], bins=int((250)), label='signal1')
+        ax.hist(signal2_after_gain[i-1], bins=int((250)), label='signal2')
+        ax.set(title=heading)
+        ax.legend()
+
     fig, axes = plt.subplots(ncols=2, figsize=(12,4))
 
 
@@ -149,10 +170,4 @@ def gain_it_results(total_gain_each_stage, num_of_iterations_for_prob1_signal1, 
     print('gain:',total_gain_each_stage)
     print( 'no.Iterations for Signal1',num_of_iterations_for_prob1_signal1)
     print('no.Iterations for Signal2',num_of_iterations_for_prob2_signal2)
-
-
-# In[ ]:
-
-
-
 
